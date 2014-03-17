@@ -19,14 +19,16 @@ module FaradayMiddleware
   autoload :Instrumentation, 'faraday_middleware/instrumentation'
   autoload :Gzip, 'faraday_middleware/gzip'
 
-  if Faraday.respond_to? :register_middleware
-    Faraday.register_middleware :request,
+  if Faraday::Request.respond_to? :register_middleware
+    Faraday::Request.register_middleware \
       :oauth    => lambda { OAuth },
       :oauth2   => lambda { OAuth2 },
       :json     => lambda { EncodeJson },
       :method_override => lambda { MethodOverride }
+  end
 
-    Faraday.register_middleware :response,
+  if Faraday::Response.respond_to? :register_middleware
+    Faraday::Response.register_middleware \
       :mashify  => lambda { Mashify },
       :rashify  => lambda { Rashify },
       :json     => lambda { ParseJson },
@@ -38,8 +40,10 @@ module FaradayMiddleware
       :caching  => lambda { Caching },
       :follow_redirects => lambda { FollowRedirects },
       :chunked => lambda { Chunked }
+  end
 
-    Faraday.register_middleware \
+  if Faraday::Middleware.respond_to? :register_middleware
+    Faraday::Middleware.register_middleware \
       :instrumentation  => lambda { Instrumentation },
       :gzip => lambda { Gzip }
   end
