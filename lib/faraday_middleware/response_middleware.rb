@@ -3,6 +3,11 @@ require 'faraday'
 module FaradayMiddleware
   # Internal: The base class for middleware that parses responses.
   class ResponseMiddleware < Faraday::Middleware
+    class Options < Faraday::Options.new(:preserve_raw, :content_type)
+      def preserve_raw
+        self[:preserve_raw] = false if self[:preserve_raw].nil?
+      end
+    end
     CONTENT_TYPE = 'Content-Type'.freeze
 
     class << self
@@ -22,7 +27,7 @@ module FaradayMiddleware
 
     def initialize(app = nil, options = {})
       super(app)
-      @options = options
+      @options = Options.from(options)
       @content_types = Array(options[:content_type])
     end
 
@@ -72,7 +77,7 @@ module FaradayMiddleware
     end
 
     def preserve_raw?(env)
-      env[:request].fetch(:preserve_raw, @options[:preserve_raw])
+      @options[:preserve_raw]
     end
   end
 end

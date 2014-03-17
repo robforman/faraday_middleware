@@ -1,9 +1,21 @@
-require 'helper'
-require 'faraday_middleware/response/parse_xml'
+require 'faraday_middleware'
 
 describe FaradayMiddleware::ParseXml, :type => :response do
   let(:xml)  { '<user><name>Erik Michaels-Ober</name><screen_name>sferik</screen_name></user>' }
   let(:user) { {'user' => {'name' => 'Erik Michaels-Ober', 'screen_name' => 'sferik'} } }
+
+  def process(body, content_type = nil, options = {})
+    response_headers = {}
+    response_headers['content-type'] = content_type if content_type
+
+    conn = Faraday.new do |f|
+      f.response :xml, options
+      f.adapter :test do |stub|
+        stub.get('/') {[ 200, response_headers, body ]}
+      end
+    end
+    conn.get("/")
+  end
 
   context "no type matching" do
     it "doesn't change nil body" do
@@ -25,7 +37,7 @@ describe FaradayMiddleware::ParseXml, :type => :response do
     let(:options) { {:preserve_raw => true} }
 
     it "parses xml body" do
-      response = process(xml)
+      response = process(xml, nil, options)
       expect(response.body).to eq(user)
       expect(response.env[:raw_body]).to eq(xml)
     end
@@ -40,12 +52,12 @@ describe FaradayMiddleware::ParseXml, :type => :response do
     let(:options) { {:content_type => /\bxml$/} }
 
     it "parses xml body of correct type" do
-      response = process(xml, 'application/xml')
+      response = process(xml, 'application/xml', options)
       expect(response.body).to eq(user)
     end
 
     it "ignores xml body of incorrect type" do
-      response = process(xml, 'text/html')
+      response = process(xml, 'text/html', options)
       expect(response.body).to eq(xml)
     end
   end
@@ -54,12 +66,12 @@ describe FaradayMiddleware::ParseXml, :type => :response do
     let(:options) { {:content_type => %w[a/b c/d]} }
 
     it "parses xml body of correct type" do
-      expect(process(xml, 'a/b').body).to be_a(Hash)
-      expect(process(xml, 'c/d').body).to be_a(Hash)
+      expect(process(xml, 'a/b', options).body).to be_a(Hash)
+      expect(process(xml, 'c/d', options).body).to be_a(Hash)
     end
 
     it "ignores xml body of incorrect type" do
-      expect(process(xml, 'a/d').body).not_to be_a(Hash)
+      expect(process(xml, 'a/d', options).body).not_to be_a(Hash)
     end
   end
 
